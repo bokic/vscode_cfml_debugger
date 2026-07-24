@@ -3,7 +3,7 @@
   "displayName": "ColdFusion CFML Debugger",
   "description": "ColdFusion / CFML debugger with virtual filesystem support for VS Code",
   "version": "0.1.0",
-  "publisher": "cfml-debugger",
+  "publisher": "BorisBarbulovski",
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
@@ -22,7 +22,7 @@
   "icon": "resources/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cfml-debugger/vscode-cfml-debugger"
+    "url": "https://github.com/bokic/vscode_cfml_debugger"
   },
   "activationEvents": [
     "onDebugResolve:cfml",
