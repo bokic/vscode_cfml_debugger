@@ -1,0 +1,410 @@
+{
+  "name": "vscode-cfml-debugger",
+  "displayName": "ColdFusion CFML Debugger",
+  "description": "ColdFusion / CFML debugger with virtual filesystem support for VS Code",
+  "version": "0.1.0",
+  "publisher": "cfml-debugger",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "coldfusion",
+    "cfml",
+    "cfscript",
+    "debug",
+    "virtual filesystem"
+  ],
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cfml-debugger/vscode-cfml-debugger"
+  },
+  "activationEvents": [
+    "onDebugResolve:cfml",
+    "onDebugDynamicConfigurations:cfml",
+    "onFileSystem:cfml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "cfml",
+        "aliases": [
+          "ColdFusion",
+          "CFML",
+          "CFScript"
+        ],
+        "extensions": [
+          ".cfm",
+          ".cfc",
+          ".cfml"
+        ]
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "cfml"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "cfml",
+        "label": "ColdFusion CFML",
+        "program": "./out/debugAdapter.js",
+        "runtime": "node",
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "request",
+              "serverUrl"
+            ],
+            "properties": {
+              "serverUrl": {
+                "type": "string",
+                "description": "URL of the ColdFusion server (e.g. http://localhost:8500)",
+                "default": "http://localhost:8500"
+              },
+              "username": {
+                "type": "string",
+                "description": "ColdFusion Administrator username",
+                "default": "admin"
+              },
+              "password": {
+                "type": "string",
+                "description": "ColdFusion Administrator password",
+                "default": ""
+              },
+              "webRoot": {
+                "type": "string",
+                "description": "Absolute path of the web root on the server",
+                "default": "${workspaceFolder}"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop after launch",
+                "default": false
+              },
+              "trace": {
+                "type": "boolean",
+                "description": "Enable verbose DAP protocol tracing",
+                "default": false
+              },
+              "virtualFs": {
+                "type": "object",
+                "description": "Virtual filesystem mount configuration",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "scheme": {
+                    "type": "string",
+                    "default": "cfrds"
+                  }
+                }
+              }
+            }
+          },
+          "attach": {
+            "required": [
+              "request",
+              "serverUrl"
+            ],
+            "properties": {
+              "serverUrl": {
+                "type": "string",
+                "description": "URL of the ColdFusion server",
+                "default": "http://localhost:8500"
+              },
+              "username": {
+                "type": "string",
+                "description": "ColdFusion Administrator username",
+                "default": "admin"
+              },
+              "password": {
+                "type": "string",
+                "description": "ColdFusion Administrator password",
+                "default": ""
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Automatically stop on attach",
+                "default": true
+              },
+              "trace": {
+                "type": "boolean",
+                "description": "Enable verbose DAP protocol tracing",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "cfml",
+            "request": "launch",
+            "name": "Launch ColdFusion Debugger",
+            "serverUrl": "http://localhost:8500",
+            "username": "admin",
+            "password": "",
+            "webRoot": "${workspaceFolder}",
+            "stopOnEntry": false,
+            "virtualFs": {
+              "enabled": true,
+              "scheme": "cfrds"
+            }
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "CFML: Launch",
+            "description": "Launch and debug a ColdFusion application",
+            "body": {
+              "type": "cfml",
+              "request": "launch",
+              "name": "Launch ColdFusion Debugger",
+              "serverUrl": "http://localhost:8500",
+              "username": "admin",
+              "password": "",
+              "webRoot": "^\"\\${workspaceFolder}\"",
+              "stopOnEntry": false
+            }
+          },
+          {
+            "label": "CFML: Attach",
+            "description": "Attach to a running ColdFusion debug session",
+            "body": {
+              "type": "cfml",
+              "request": "attach",
+              "name": "Attach to ColdFusion Debugger",
+              "serverUrl": "http://localhost:8500",
+              "username": "admin",
+              "password": "",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ],
+    "configuration": {
+      "title": "ColdFusion CFML Debugger",
+      "properties": {
+        "cfmlDebugger.hostname": {
+          "type": "string",
+          "default": "localhost",
+          "description": "ColdFusion server hostname"
+        },
+        "cfmlDebugger.port": {
+          "type": "number",
+          "default": 8500,
+          "description": "ColdFusion server port"
+        },
+        "cfmlDebugger.username": {
+          "type": "string",
+          "default": "admin",
+          "description": "ColdFusion Administrator username"
+        },
+        "cfmlDebugger.password": {
+          "type": "string",
+          "default": "",
+          "description": "ColdFusion Administrator password"
+        },
+        "cfmlDebugger.path": {
+          "type": "string",
+          "default": "/",
+          "description": "Base path on the ColdFusion server"
+        },
+        "cfmlDebugger.url": {
+          "type": "string",
+          "default": "http://localhost:8500",
+          "description": "Full ColdFusion server URL (auto-built from hostname/port/path)"
+        },
+        "cfmlDebugger.virtualFs.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the virtual filesystem provider (cfrds:// scheme)"
+        },
+        "cfmlDebugger.virtualFs.scheme": {
+          "type": "string",
+          "default": "cfrds",
+          "description": "URI scheme used for virtual filesystem entries"
+        },
+        "cfmlDebugger.trace": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose DAP trace logging"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "cfmlDebugger.openVirtualFile",
+        "title": "CFML: Open Virtual File",
+        "category": "ColdFusion Debugger"
+      },
+      {
+        "command": "cfmlDebugger.refreshVirtualFs",
+        "title": "CFML: Refresh Virtual Filesystem",
+        "category": "ColdFusion Debugger"
+      },
+      {
+        "command": "cfmlDebugger.showDebugLog",
+        "title": "CFML: Show Debug Log",
+        "category": "ColdFusion Debugger"
+      },
+      {
+        "command": "cfmlDebugger.connect",
+        "title": "CFML: Connect to Server",
+        "category": "ColdFusion Debugger"
+      },
+      {
+        "command": "cfmlDebugger.disconnect",
+        "title": "CFML: Disconnect from Server",
+        "category": "ColdFusion Debugger"
+      },
+      {
+        "command": "cfmlDebugger.rename",
+        "title": "CFML: Rename",
+        "category": "ColdFusion Debugger"
+      },
+      {
+        "command": "cfmlDebugger.newFile",
+        "title": "New File...",
+        "category": "ColdFusion Debugger",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "cfmlDebugger.newFolder",
+        "title": "New Folder...",
+        "category": "ColdFusion Debugger",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "cfmlDebugger.delete",
+        "title": "Delete",
+        "category": "ColdFusion Debugger",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "cfmlDebugger.newFile",
+          "when": "view == cfmlDebuggerVirtualFs",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cfmlDebugger.newFolder",
+          "when": "view == cfmlDebuggerVirtualFs",
+          "group": "navigation@2"
+        },
+        {
+          "command": "cfmlDebugger.refreshVirtualFs",
+          "when": "view == cfmlDebuggerVirtualFs",
+          "group": "navigation@3"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "cfmlDebugger.newFile",
+          "when": "view == cfmlDebuggerVirtualFs && viewItem == cfmlDirectory",
+          "group": "1_creation@1"
+        },
+        {
+          "command": "cfmlDebugger.newFolder",
+          "when": "view == cfmlDebuggerVirtualFs && viewItem == cfmlDirectory",
+          "group": "1_creation@2"
+        },
+        {
+          "command": "cfmlDebugger.rename",
+          "when": "view == cfmlDebuggerVirtualFs && (viewItem == cfmlFile || viewItem == cfmlDirectory)",
+          "group": "inline"
+        },
+        {
+          "command": "cfmlDebugger.rename",
+          "when": "view == cfmlDebuggerVirtualFs && (viewItem == cfmlFile || viewItem == cfmlDirectory)",
+          "group": "2_modification@1"
+        },
+        {
+          "command": "cfmlDebugger.delete",
+          "when": "view == cfmlDebuggerVirtualFs && (viewItem == cfmlFile || viewItem == cfmlDirectory)",
+          "group": "2_modification@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "cfmlDebugger.rename",
+        "key": "f2",
+        "when": "view == cfmlDebuggerVirtualFs && (viewItem == cfmlFile || viewItem == cfmlDirectory)"
+      },
+      {
+        "command": "cfmlDebugger.delete",
+        "key": "delete",
+        "when": "view == cfmlDebuggerVirtualFs && (viewItem == cfmlFile || viewItem == cfmlDirectory)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cfmlDebugger",
+          "title": "ColdFusion Debugger",
+          "icon": "resources/icon-activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "cfmlDebugger": [
+        {
+          "id": "cfmlDebuggerSettings",
+          "name": "Connection Settings",
+          "type": "webview"
+        },
+        {
+          "id": "cfmlDebuggerSessions",
+          "name": "Debug Sessions"
+        },
+        {
+          "id": "cfmlDebuggerVirtualFs",
+          "name": "Virtual Filesystem"
+        }
+      ],
+      "debug": [
+        {
+          "id": "cfmlDebuggerVirtualFsDebug",
+          "name": "CFML Virtual Filesystem",
+          "when": "debugType == cfml"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@bokic/cfrds": "^1.1.2",
+    "@vscode/debugadapter": "^1.65.0",
+    "@vscode/debugprotocol": "^1.65.0",
+    "punycode": "^2.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  }
+}

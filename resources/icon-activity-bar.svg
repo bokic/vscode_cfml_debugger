@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- C letter -->
+  <path d="M10.5 6C7.46 6 5 8.46 5 11.5v1C5 15.54 7.46 18 10.5 18H12v-2h-1.5C8.57 16 7 14.43 7 12.5v-1C7 9.57 8.57 8 10.5 8H12V6h-1.5z" fill="white"/>
+  <!-- F letter -->
+  <path d="M13 6v12h2v-5h3v-2h-3V8h4V6h-6z" fill="white"/>
+  <!-- small debug dot -->
+  <circle cx="12" cy="20.5" r="1.5" fill="white"/>
+</svg>
