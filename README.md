@@ -100,6 +100,9 @@ To prevent leaving threads paused or orphan debug sessions open on the ColdFusio
 
 ## 🚀 Installation & Getting Started
 
+> [!TIP]
+> Prebuilt `.vsix` package releases are available for direct download at [GitHub Releases](https://github.com/bokic/vscode_cfml_debugger/releases).
+
 ### 1. Build from Source
 ```bash
 # Clone the repository
