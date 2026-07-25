@@ -27,11 +27,34 @@ if [ "$COMMITS_COUNT" -gt 0 ]; then
 fi
 
 # Append -dirty if working directory has uncommitted changes
+IS_DIRTY=false
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
     VERSION="${VERSION}-dirty"
+    IS_DIRTY=true
 fi
 
+# Gather Git Commit details
+GIT_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+GIT_SHORT_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 echo "Target Version: $VERSION"
+echo "Git Commit:     $GIT_COMMIT ($GIT_BRANCH)"
+
+# Write build-info.json into root directory so it is packaged into the VSIX
+cat <<EOF > build-info.json
+{
+  "version": "$VERSION",
+  "gitCommit": "$GIT_COMMIT",
+  "gitShortCommit": "$GIT_SHORT_COMMIT",
+  "gitBranch": "$GIT_BRANCH",
+  "gitTag": "$LATEST_TAG",
+  "commitsSinceTag": $COMMITS_COUNT,
+  "isDirty": $IS_DIRTY,
+  "buildDate": "$BUILD_DATE"
+}
+EOF
 
 # Check if node_modules exists, install if missing
 if [ ! -d "node_modules" ]; then
@@ -51,6 +74,7 @@ echo "============================================="
 VSIX_FILE="vscode-cfml-debugger-${VERSION}.vsix"
 if [ -f "$VSIX_FILE" ]; then
     echo "SUCCESS: Created $VSIX_FILE"
+    echo "Included build-info.json with Commit SHA: $GIT_COMMIT"
     echo "To install in VS Code, run:"
     echo "  code --install-extension $VSIX_FILE"
 else
