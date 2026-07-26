@@ -87,7 +87,7 @@ vscode_cfml_debugger/
 - Handles all DAP lifecycle requests (`initialize`, `launch`, `attach`, `disconnect`, `terminate`).
 - Maintains its **own** polling event loop for the active DAP session (separate from `ConnectionManager`'s loop).
 - Handles `BREAKPOINT`, `STEP`, and `BREAKPOINT_SET` event types from `@bokic/cfrds`.
-- **TODO stubs**: `stackTraceRequest`, `scopesRequest`, `variablesRequest`, `continueRequest`, `nextRequest`, `stepInRequest`, `stepOutRequest`, `evaluateRequest`.
+- **Full DAP implementation**: `stackTraceRequest` (with CF_TRACE call stack), `scopesRequest` (17 CF scopes), `variablesRequest` (with nested struct/array expansion), `continueRequest`, `nextRequest` (step over), `stepInRequest`, `stepOutRequest`, `evaluateRequest`.
 
 ### CfmlSettingsViewProvider (`src/panels/cfmlSettingsViewProvider.ts`)
 - Sidebar webview that renders a self-contained HTML/CSS/JS connection form.
@@ -175,21 +175,6 @@ npm test      # compiles first via pretest, then node ./out/test/runTest.js
   userland `punycode/` package.
 - `vscode.FileSystemProvider` is registered at activation time (not lazily), so
   `cfrds://` URIs can be opened even before a debug session starts.
-
----
-
-## Known TODOs / Work in Progress
-
-The following DAP handlers are **stubs** that return empty/no-op responses:
-
-- `stackTraceRequest` — needs real call stack from CF server.
-- `scopesRequest` — needs CF scopes (variables, url, form, session, application…).
-- `variablesRequest` — needs variable values from CF server.
-- `continueRequest` — needs resume command to CF server.
-- `nextRequest` (step over), `stepInRequest`, `stepOutRequest` — need step commands.
-- `evaluateRequest` — needs expression evaluation in CF server context.
-- `configurationDoneRequest` — should signal CF server that DAP is ready.
-- `disconnectRequest` — TODO comment to resume any paused CF template before stopping.
 
 ---
 
