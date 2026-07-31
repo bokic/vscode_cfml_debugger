@@ -98,6 +98,13 @@ export class ConnectionManager implements vscode.Disposable {
       return;
     }
 
+    if (this._state.status === "connected" || this._state.status === "error") {
+      Logger.info(
+        "[ConnectionManager] Existing connection active — disconnecting first.",
+      );
+      await this.disconnect();
+    }
+
     this._setState({ status: "connecting" });
     Logger.info(
       `[ConnectionManager] Connecting to ColdFusion server ${cfg.host}:${cfg.port}...`,
