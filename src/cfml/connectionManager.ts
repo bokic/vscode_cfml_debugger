@@ -472,6 +472,22 @@ export class ConnectionManager implements vscode.Disposable {
     );
   }
 
+  async clearAllBreakpoints(): Promise<void> {
+    if (this._state.status !== "connected" || !this._state.dbgSessionId) {
+      return;
+    }
+    Logger.info("[ConnectionManager] Clearing all breakpoints on server...");
+    try {
+      await this._state.server.debuggerClearAllBreakpoints(
+        this._state.dbgSessionId,
+      );
+    } catch (err) {
+      Logger.warn(
+        `[ConnectionManager] Failed to clear all breakpoints on server: ${err}`,
+      );
+    }
+  }
+
   async evaluateExpression(
     threadName: string,
     expression: string,

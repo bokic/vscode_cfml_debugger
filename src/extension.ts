@@ -219,6 +219,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Sync existing breakpoints whenever connected, close cfrds tabs on disconnect
     connectionManager.onDidChangeState(async (state) => {
         if (state.status === 'connected') {
+            await connectionManager.clearAllBreakpoints();
             for (const bp of vscode.debug.breakpoints) {
                 if (bp instanceof vscode.SourceBreakpoint) {
                     const serverPath = bp.location.uri.scheme === 'cfrds' ? bp.location.uri.path : bp.location.uri.fsPath;
