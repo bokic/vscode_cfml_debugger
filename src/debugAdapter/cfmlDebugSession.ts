@@ -282,44 +282,18 @@ export class CfmlDebugSession extends DebugSession {
 
     private _resolveSourcePath(source: string, line: number): string {
         let raw = source;
-        if (!raw) {
-            // Try matching line against set breakpoints in DAP session
-            if (line > 0) {
-                for (const [filePath, bps] of this._breakpoints.entries()) {
-                    if (bps.some(bp => bp.line === line)) {
-                        raw = filePath;
-                        break;
-                    }
-                }
-            }
-        }
         if (!raw && line > 0) {
-            // Try matching line against global VS Code breakpoints
-            for (const bp of vscode.debug.breakpoints) {
-                if (bp instanceof vscode.SourceBreakpoint) {
-                    const bpLine = bp.location.range.start.line + 1;
-                    if (bpLine === line) {
-                        const uri = bp.location.uri;
-                        raw = uri.scheme === 'cfrds' ? uri.path : uri.fsPath;
-                        break;
-                    }
+            // Try exact line match against set breakpoints in DAP session
+            for (const [filePath, bps] of this._breakpoints.entries()) {
+                if (bps.some(bp => bp.line === line)) {
+                    raw = filePath;
+                    break;
                 }
             }
-        }
-        if (!raw && this._breakpoints.size === 1) {
-            raw = Array.from(this._breakpoints.keys())[0] || '';
-        }
-        if (!raw && vscode.window.activeTextEditor) {
-            const uri = vscode.window.activeTextEditor.document.uri;
-            raw = uri.scheme === 'cfrds' ? uri.path : uri.fsPath;
         }
 
         if (!raw) return '';
-        // Normalize scheme prefixes (e.g. cfrds:/app/test.cfm or cfrds://app/test.cfm -> /app/test.cfm)
-        if (raw.startsWith('cfrds://')) return raw.replace(/^cfrds:\/\//, '/');
-        if (raw.startsWith('cfrds:/')) return raw.replace(/^cfrds:\//, '/');
-        if (raw.startsWith('cfrds:')) return raw.replace(/^cfrds:/, '/');
-        return raw;
+        return normalizeVfsPath(raw);
     }
 
     // ── Breakpoints ───────────────────────────────────────────────────────
