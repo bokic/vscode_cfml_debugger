@@ -217,10 +217,7 @@ export function activate(context: vscode.ExtensionContext): void {
         })
     );
 
-    // Close any tabs on startup and when disconnected
-    closeCfrdsTabs(vfsScheme);
-
-    // Sync existing breakpoints whenever connected, close tabs on disconnect
+    // Close tabs only on explicit disconnect state change
     connectionManager.onDidChangeState(async (state) => {
         if (state.status === 'connected') {
             await connectionManager.clearAllBreakpoints();
@@ -245,18 +242,8 @@ export function closeCfrdsTabs(scheme: string = 'cfrds'): void {
         const tabsToClose: vscode.Tab[] = [];
         for (const group of vscode.window.tabGroups.all) {
             for (const tab of group.tabs) {
-                let isCfrds = false;
-                if (tab.input instanceof vscode.TabInputText) {
-                    isCfrds = tab.input.uri?.scheme === scheme;
-                } else if (tab.input instanceof vscode.TabInputTextDiff) {
-                    isCfrds = tab.input.modified?.scheme === scheme || tab.input.original?.scheme === scheme;
-                } else if (tab.input && typeof tab.input === 'object') {
-                    const inputObj = tab.input as any;
-                    if (inputObj.uri?.scheme === scheme || inputObj.modified?.scheme === scheme || inputObj.original?.scheme === scheme) {
-                        isCfrds = true;
-                    }
-                }
-                if (isCfrds) {
+                // Only close standard text tabs opened via cfrds:// scheme, skip diff tabs
+                if (tab.input instanceof vscode.TabInputText && tab.input.uri?.scheme === scheme) {
                     tabsToClose.push(tab);
                 }
             }
