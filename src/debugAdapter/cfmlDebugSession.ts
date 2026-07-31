@@ -42,13 +42,27 @@ interface CfmlLaunchArguments extends DebugProtocol.LaunchRequestArguments {
  * Replace the TODO sections with real CF debug-protocol logic.
  */
 export class CfmlDebugSession extends DebugSession {
-    private static readonly THREAD_ID = 1;
+    private static readonly DEFAULT_THREAD_ID = 1;
 
     private _config!: CfmlLaunchArguments;
     private _breakpoints: Map<string, DebugProtocol.Breakpoint[]> = new Map();
 
     private _serverSessionId?: string;
     private _eventSubscription?: vscode.Disposable;
+
+    /** Map of thread names to numeric thread IDs */
+    private _threads = new Map<string, number>();
+    private _nextThreadId = 1;
+
+    private _getOrAssignThreadId(name: string): number {
+        const threadName = name || 'main';
+        let id = this._threads.get(threadName);
+        if (!id) {
+            id = this._nextThreadId++;
+            this._threads.set(threadName, id);
+        }
+        return id;
+    }
 
     /**
      * The CF thread name captured from the last BREAKPOINT or STEP event.
@@ -119,7 +133,7 @@ export class CfmlDebugSession extends DebugSession {
         this.sendResponse(response);
 
         if (args.stopOnEntry) {
-            this.sendEvent(new StoppedEvent('entry', CfmlDebugSession.THREAD_ID));
+            this.sendEvent(new StoppedEvent('entry', CfmlDebugSession.DEFAULT_THREAD_ID));
         }
     }
 
@@ -136,7 +150,7 @@ export class CfmlDebugSession extends DebugSession {
         this.sendResponse(response);
 
         if (args.stopOnEntry) {
-            this.sendEvent(new StoppedEvent('entry', CfmlDebugSession.THREAD_ID));
+            this.sendEvent(new StoppedEvent('entry', CfmlDebugSession.DEFAULT_THREAD_ID));
         }
     }
 
@@ -239,13 +253,14 @@ export class CfmlDebugSession extends DebugSession {
 
                 source = this._resolveSourcePath(source, line);
 
+                const threadId = this._getOrAssignThreadId(threadName);
                 this._stoppedSource     = source;
                 this._stoppedLine       = line;
                 this._stoppedThreadName = threadName;
                 this._stoppedEventData  = event.data as Record<string, any>;
-                Logger.info(`[DAP] Breakpoint hit: source="${source}" line=${line} thread=${threadName}`);
+                Logger.info(`[DAP] Breakpoint hit: source="${source}" line=${line} thread=${threadName} (id=${threadId})`);
                 this.sendEvent(new OutputEvent(`Breakpoint hit: ${source}:${line}\n`, 'console'));
-                this.sendEvent(new StoppedEvent('breakpoint', CfmlDebugSession.THREAD_ID));
+                this.sendEvent(new StoppedEvent('breakpoint', threadId));
                 break;
             }
 
@@ -256,13 +271,14 @@ export class CfmlDebugSession extends DebugSession {
 
                 source = this._resolveSourcePath(source, line);
 
+                const threadId = this._getOrAssignThreadId(threadName);
                 this._stoppedSource     = source;
                 this._stoppedLine       = line;
                 this._stoppedThreadName = threadName;
                 this._stoppedEventData  = event.data as Record<string, any>;
-                Logger.info(`[DAP] Step event: source="${source}" line=${line} thread=${threadName}`);
+                Logger.info(`[DAP] Step event: source="${source}" line=${line} thread=${threadName} (id=${threadId})`);
                 this.sendEvent(new OutputEvent(`Step: ${source}:${line}\n`, 'console'));
-                this.sendEvent(new StoppedEvent('step', CfmlDebugSession.THREAD_ID));
+                this.sendEvent(new StoppedEvent('step', threadId));
                 break;
             }
 
@@ -356,10 +372,16 @@ export class CfmlDebugSession extends DebugSession {
     // ── Threads ───────────────────────────────────────────────────────────
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        Logger.info(`DAP threadsRequest thread=${this._stoppedThreadName}`);
-        response.body = {
-            threads: [new Thread(CfmlDebugSession.THREAD_ID, this._stoppedThreadName || 'main')]
-        };
+        Logger.info(`DAP threadsRequest count=${this._threads.size}`);
+        const threadsList: Thread[] = [];
+        if (this._threads.size === 0) {
+            threadsList.push(new Thread(CfmlDebugSession.DEFAULT_THREAD_ID, this._stoppedThreadName || 'main'));
+        } else {
+            for (const [name, id] of this._threads.entries()) {
+                threadsList.push(new Thread(id, name));
+            }
+        }
+        response.body = { threads: threadsList };
         this.sendResponse(response);
     }
 
