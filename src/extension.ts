@@ -186,6 +186,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }),
         vscode.debug.onDidChangeBreakpoints(async (e) => {
             if (!connectionManager.isConnected) { return; }
+            if (vscode.debug.activeDebugSession) { return; }
             for (const bp of e.added) {
                 if (bp instanceof vscode.SourceBreakpoint) {
                     const serverPath = bp.location.uri.scheme === 'cfrds' ? bp.location.uri.path : bp.location.uri.fsPath;
