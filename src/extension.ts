@@ -61,7 +61,8 @@ export function activate(context: vscode.ExtensionContext): void {
     // ── Settings webview panel ───────────────────────────────────────────
     const settingsProvider = new CfmlSettingsViewProvider(
         context.extensionUri,
-        connectionManager
+        connectionManager,
+        context.secrets
     );
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
@@ -84,12 +85,13 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('cfmlDebugger.showDebugLog',     () => Logger.show()),
         vscode.commands.registerCommand('cfmlDebugger.connect', async () => {
             const cfg = vscode.workspace.getConfiguration('cfmlDebugger');
+            const password = (await context.secrets.get('cfmlDebugger.password')) ?? cfg.get<string>('password', '');
             try {
                 await connectionManager.connect({
                     host:     cfg.get<string>('hostname', 'localhost'),
                     port:     cfg.get<number>('port',     8500),
                     username: cfg.get<string>('username', 'admin'),
-                    password: cfg.get<string>('password', ''),
+                    password: password,
                     path:     cfg.get<string>('path',     '/'),
                 });
                 vscode.window.showInformationMessage('Connected to ColdFusion server!');

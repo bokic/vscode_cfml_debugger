@@ -13,19 +13,24 @@ interface CfmlConnectionSettings {
     url:      string;
 }
 
-function loadSettings(): CfmlConnectionSettings {
+async function loadSettings(secrets?: vscode.SecretStorage): Promise<CfmlConnectionSettings> {
     const cfg = vscode.workspace.getConfiguration(SETTINGS_KEY);
+    const password = secrets ? (await secrets.get('cfmlDebugger.password')) ?? '' : cfg.get<string>('password', '');
     return {
         hostname: cfg.get<string>('hostname', 'localhost'),
         port:     cfg.get<number>('port',     8500),
         username: cfg.get<string>('username', 'admin'),
-        password: cfg.get<string>('password', ''),
+        password: password,
         path:     cfg.get<string>('path',     '/'),
         url:      cfg.get<string>('url',      'http://localhost:8500'),
     };
 }
 
-async function saveSetting(key: string, value: string | number): Promise<void> {
+async function saveSetting(key: string, value: string | number, secrets?: vscode.SecretStorage): Promise<void> {
+    if (key === 'password' && secrets) {
+        await secrets.store('cfmlDebugger.password', String(value));
+        return;
+    }
     await vscode.workspace
         .getConfiguration(SETTINGS_KEY)
         .update(key, value, vscode.ConfigurationTarget.Global);
@@ -71,7 +76,8 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
-        private readonly _connectionManager: ConnectionManager
+        private readonly _connectionManager: ConnectionManager,
+        private readonly _secrets?: vscode.SecretStorage
     ) {}
 
     resolveWebviewView(
@@ -107,28 +113,28 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
 
                     case 'ready':
                         // Webview signalled it's ready — push current settings + state
-                        this._postSettings();
+                        await this._postSettings();
                         this._postState();
                         break;
 
                     case 'saveSetting':
                         if (msg.key !== undefined && msg.value !== undefined) {
-                            await saveSetting(msg.key, msg.value);
+                            await saveSetting(msg.key, msg.value, this._secrets);
                         }
                         break;
 
                     case 'connect': {
-                        let s = loadSettings();
+                        let s = await loadSettings(this._secrets);
                         if (msg.settings) {
                             // Persist and use the exact values from the DOM inputs
                             s = msg.settings as CfmlConnectionSettings;
                             await Promise.all([
-                                saveSetting('hostname', s.hostname),
-                                saveSetting('port',     s.port),
-                                saveSetting('username', s.username),
-                                saveSetting('password', s.password),
-                                saveSetting('path',     s.path),
-                                saveSetting('url',      s.url),
+                                saveSetting('hostname', s.hostname, this._secrets),
+                                saveSetting('port',     s.port,     this._secrets),
+                                saveSetting('username', s.username, this._secrets),
+                                saveSetting('password', s.password, this._secrets),
+                                saveSetting('path',     s.path,     this._secrets),
+                                saveSetting('url',      s.url,      this._secrets),
                             ]);
                         }
                         try {
@@ -163,9 +169,9 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
             }),
 
             // ── Re-push settings when changed externally ──────────────────────
-            vscode.workspace.onDidChangeConfiguration(e => {
+            vscode.workspace.onDidChangeConfiguration(async e => {
                 if (e.affectsConfiguration(SETTINGS_KEY)) {
-                    this._postSettings();
+                    await this._postSettings();
                 }
             })
         );
@@ -177,8 +183,9 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
         this._view?.webview.postMessage(msg);
     }
 
-    private _postSettings(): void {
-        this._post({ command: 'settings', settings: loadSettings() });
+    private async _postSettings(): Promise<void> {
+        const settings = await loadSettings(this._secrets);
+        this._post({ command: 'settings', settings });
     }
 
     private _postState(): void {

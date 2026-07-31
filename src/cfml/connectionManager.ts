@@ -526,7 +526,7 @@ export class ConnectionManager implements vscode.Disposable {
       ]);
       const [, offset] = parseNumber(raw, 0);
       const [wddxXml] = parseString(raw, offset);
-      Logger.info(
+      Logger.debug(
         `[ConnectionManager] evaluateExpression("${expression}") -> ${wddxXml}`,
       );
       return parseWddxResponse(wddxXml);
