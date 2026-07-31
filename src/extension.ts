@@ -98,9 +98,6 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         }),
         vscode.commands.registerCommand('cfmlDebugger.disconnect', async () => {
-            if (vscode.debug.activeDebugSession) {
-                await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
-            }
             await connectionManager.disconnect();
             vscode.window.showInformationMessage('Disconnected from ColdFusion server.');
         }),
