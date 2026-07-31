@@ -148,10 +148,6 @@ export class CfmlDebugSession extends DebugSession {
         await this._startDebugSession();
 
         this.sendResponse(response);
-
-        if (args.stopOnEntry) {
-            this.sendEvent(new StoppedEvent('entry', CfmlDebugSession.DEFAULT_THREAD_ID));
-        }
     }
 
     protected async disconnectRequest(
