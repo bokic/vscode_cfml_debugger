@@ -36,7 +36,6 @@ export function getCfmlType(val: any, rawTypeHint?: string): string {
     if (val instanceof Date) return "date";
     if (Buffer.isBuffer(val) || val instanceof Uint8Array) return "binary";
     if (typeof val === "string") {
-        if (/^-?\d+(\.\d+)?$/.test(val.trim())) return "number";
         if (val.toLowerCase() === "true" || val.toLowerCase() === "false") return "boolean";
         // WDDX / CFML ISO Date string pattern (e.g. 2026-07-24T17:58:38)
         if (/^\d{4}-\d{2}-\d{2}(T|\s)\d{2}:\d{2}:\d{2}/.test(val.trim())) return "date";
@@ -71,12 +70,6 @@ export function formatCleanValue(val: any): string {
         return `Binary(${val.byteLength} bytes)`;
     }
     if (typeof val === "string") {
-        if (/^-?\d+(\.\d+)?$/.test(val.trim())) {
-            return `${val.trim()}`;
-        }
-        if (val.toLowerCase() === "true" || val.toLowerCase() === "false") {
-            return `${val.toLowerCase()}`;
-        }
         return `"${val}"`;
     }
     if (Array.isArray(val)) {
