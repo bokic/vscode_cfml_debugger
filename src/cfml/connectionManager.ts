@@ -6,8 +6,13 @@ import {
   DebuggerEvent,
   CFRDS_DEBUGGER_EVENT_TYPE,
 } from "@bokic/cfrds";
-import { sendRdsCommand } from "@bokic/cfrds/dist/transport";
 import { parseNumber, parseString } from "@bokic/cfrds/dist/parser";
+import {
+  setServerTimeout,
+  destroyServerAgent,
+  resetServerAgent,
+  sendServerRdsCommand,
+} from "./cfrdsHelper";
 import { parseWddxResponse, ParsedWddxResult, escapeXml } from "../utils/wddxParser";
 import { Logger } from "../utils/logger";
 
@@ -113,9 +118,7 @@ export class ConnectionManager implements vscode.Disposable {
     const server = new Server(cfg.host, cfg.port, cfg.username, cfg.password);
     // ColdFusion long-polling requests must block on the client until the server responds.
     // Set socket timeout to 0 (disabled) so Node.js never aborts long-poll requests on our side.
-    if ((server as any).ctx) {
-      (server as any).ctx.timeout = 0;
-    }
+    setServerTimeout(server, 0);
 
     try {
       const info: IdeDefaultResult = {
@@ -245,24 +248,12 @@ export class ConnectionManager implements vscode.Disposable {
       this._setState({ status: "disconnected" });
 
       // Immediately destroy the agent sockets so the blocking long-poll HTTP request is aborted!
-      try {
-        if ((server as any).ctx?.agent) {
-          (server as any).ctx.agent.destroy();
-        }
-      } catch (e) {
-        Logger.warn(
-          `[ConnectionManager] Error destroying agent sockets on disconnect: ${e}`,
-        );
-      }
+      destroyServerAgent(server);
 
       if (sessionId) {
         try {
           // Re-create temporary agent to send clean teardown commands
-          if ((server as any).ctx) {
-            (server as any).ctx.agent = new (require("http").Agent)({
-              keepAlive: false,
-            });
-          }
+          resetServerAgent(server);
           await server.debuggerClearAllBreakpoints(sessionId);
           Logger.info(
             `[ConnectionManager] Cleared breakpoints on disconnect for session ID=${sessionId}`,
@@ -502,7 +493,7 @@ export class ConnectionManager implements vscode.Disposable {
     const wddx = `<wddxPacket version='1.0'><header/><data><array length='1'><struct type='java.util.HashMap'><var name='COMMAND'><string>GET_SINGLE_CF_VARIABLE</string></var><var name='VARIABLE_NAME'><string>${escapedExpr}</string></var><var name='THREAD'><string>${escapedThread}</string></var></struct></array></data></wddxPacket>`;
 
     try {
-      const raw = await sendRdsCommand((server as any).ctx, "DBGREQUEST", [
+      const raw = await sendServerRdsCommand(server, "DBGREQUEST", [
         "DBG_REQUEST",
         sessionName,
         wddx,
