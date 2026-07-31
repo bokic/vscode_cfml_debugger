@@ -144,15 +144,7 @@ export class CfmlDebugSession extends DebugSession {
         response: DebugProtocol.DisconnectResponse,
         _args: DebugProtocol.DisconnectArguments
     ): Promise<void> {
-        Logger.info('DAP disconnectRequest');
-        const cm = this.virtualFsProvider?.connectionManager;
-        if (cm?.isConnected) {
-            try {
-                await cm.disconnect();
-            } catch (e) {
-                Logger.warn(`[DAP] Error disconnecting ConnectionManager on disconnectRequest: ${e}`);
-            }
-        }
+        Logger.info('DAP disconnectRequest — ending session without closing shared RDS connection');
         this._eventSubscription?.dispose();
         this._eventSubscription = undefined;
         this._serverSessionId   = undefined;
@@ -163,15 +155,7 @@ export class CfmlDebugSession extends DebugSession {
         response: DebugProtocol.TerminateResponse,
         _args: DebugProtocol.TerminateArguments
     ): Promise<void> {
-        Logger.info('DAP terminateRequest');
-        const cm = this.virtualFsProvider?.connectionManager;
-        if (cm?.isConnected) {
-            try {
-                await cm.disconnect();
-            } catch (e) {
-                Logger.warn(`[DAP] Error disconnecting ConnectionManager on terminateRequest: ${e}`);
-            }
-        }
+        Logger.info('DAP terminateRequest — ending session without closing shared RDS connection');
         this._eventSubscription?.dispose();
         this._eventSubscription = undefined;
         this._serverSessionId   = undefined;
