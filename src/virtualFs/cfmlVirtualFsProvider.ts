@@ -41,11 +41,23 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
         this._emitter.event;
 
     constructor(public readonly connectionManager: ConnectionManager) {
-        // Invalidate directory cache when connection state changes
+        // Invalidate directory cache and in-memory store when connection state changes
         connectionManager.onDidChangeState(() => {
-            this._dirCache.clear();
-            Logger.debug('[VirtualFs] Directory cache cleared (connection state changed).');
+            this.clearCache();
+            Logger.debug('[VirtualFs] Cache cleared (connection state changed).');
         });
+
+        // Also clear cache when debug sessions end
+        vscode.debug.onDidTerminateDebugSession(() => {
+            this.clearCache();
+            Logger.debug('[VirtualFs] Cache cleared (debug session terminated).');
+        });
+    }
+
+    /** Clears all cached in-memory store entries and directory listings. */
+    public clearCache(): void {
+        this._store.clear();
+        this._dirCache.clear();
     }
 
     // ── FileSystemProvider ────────────────────────────────────────────────
@@ -127,7 +139,22 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
     }
 
     async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-        // 1. In-memory store
+        const serverPath = this._toServerPath(uri.path);
+
+        // Check if server file metadata differs from in-memory cache
+        if (this.connectionManager.isConnected) {
+            const parentPath = this._parentPath(serverPath);
+            const fileName = serverPath.split('/').pop() ?? '';
+            try {
+                const dirItems = await this._readDirFromServer(parentPath);
+                // If item doesn't exist on server anymore, evict from store
+                if (!dirItems.some(([n]) => n === fileName)) {
+                    this._store.delete(uri.path);
+                }
+            } catch { /* proceed */ }
+        }
+
+        // 1. In-memory store check
         const mem = this._store.get(uri.path);
         if (mem) {
             if (mem.type !== 'file') {
@@ -136,13 +163,12 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
             return mem.content;
         }
 
-        // 2. Live server
+        // 2. Fetch fresh content from server
         if (this.connectionManager.isConnected) {
             try {
-                const serverPath = this._toServerPath(uri.path);
                 Logger.info(`[VirtualFs] readFile from server: ${serverPath}`);
                 const data = await this.connectionManager.readFile(serverPath);
-                // Cache in in-memory store so VS Code can re-read without hitting the server
+                // Cache in in-memory store so VS Code can re-read without unnecessary server calls
                 const now = Date.now();
                 this._store.set(uri.path, { type: 'file', content: data, ctime: now, mtime: now });
                 return data;
@@ -189,9 +215,6 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
 
         const isNew = !existing;
         const now   = Date.now();
-        this._store.set(uri.path, {
-            type: 'file', content, ctime: existing?.ctime ?? now, mtime: now,
-        });
 
         if (this.connectionManager.isConnected && this.connectionManager.server) {
             const serverPath = this._toServerPath(uri.path);
@@ -205,6 +228,11 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
                 throw vscode.FileSystemError.Unavailable(uri);
             }
         }
+
+        // Only commit to in-memory store AFTER server write has succeeded
+        this._store.set(uri.path, {
+            type: 'file', content, ctime: existing?.ctime ?? now, mtime: now,
+        });
 
         this._dirCache.clear();
         this._fireChange(uri, isNew ? vscode.FileChangeType.Created : vscode.FileChangeType.Changed);
