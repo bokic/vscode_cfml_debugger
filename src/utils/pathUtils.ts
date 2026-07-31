@@ -50,3 +50,17 @@ export function getParentPath(pathStr: string): string {
     }
     return normalized.slice(0, idx);
 }
+
+/**
+ * Strips cfrds URI scheme prefixes (e.g. cfrds://, cfrds:/, cfrds:) and normalizes server path.
+ */
+export function normalizeVfsPath(pathStr: string): string {
+    if (!pathStr) return '';
+    let clean = pathStr;
+    if (clean.startsWith('cfrds://')) { clean = clean.substring(8); }
+    else if (clean.startsWith('cfrds:/')) { clean = clean.substring(7); }
+    else if (clean.startsWith('cfrds:')) { clean = clean.substring(6); }
+    return normalizeServerPath(clean);
+}
+
+

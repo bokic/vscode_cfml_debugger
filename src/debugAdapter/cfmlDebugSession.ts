@@ -18,6 +18,7 @@ import { CfmlVirtualFsProvider } from '../virtualFs/cfmlVirtualFsProvider';
 import { DebuggerEvent, CFRDS_DEBUGGER_EVENT_TYPE } from '@bokic/cfrds';
 import { Logger } from '../utils/logger';
 import { formatCfmlValue, formatCleanValue, getCfmlType } from '../utils/wddxParser';
+import { normalizeVfsPath } from '../utils/pathUtils';
 
 /** Shape of the launch / attach configuration object. */
 interface CfmlLaunchArguments extends DebugProtocol.LaunchRequestArguments {
@@ -327,11 +328,12 @@ export class CfmlDebugSession extends DebugSession {
         response: DebugProtocol.SetBreakpointsResponse,
         args: DebugProtocol.SetBreakpointsArguments
     ): Promise<void> {
-        const path = args.source.path ?? '';
-        Logger.info(`DAP setBreakPointsRequest: ${path} (${args.breakpoints?.length ?? 0} breakpoints)`);
+        const rawPath = args.source.path ?? '';
+        const serverPath = normalizeVfsPath(rawPath);
+        Logger.info(`DAP setBreakPointsRequest: ${rawPath} -> normalized: ${serverPath} (${args.breakpoints?.length ?? 0} breakpoints)`);
 
         const reqLines = new Set<number>((args.breakpoints ?? []).map(bp => bp.line));
-        const prevBps = this._breakpoints.get(path) ?? [];
+        const prevBps = this._breakpoints.get(rawPath) ?? this._breakpoints.get(serverPath) ?? [];
         const prevLines = new Set<number>(prevBps.map(bp => bp.line).filter((l): l is number => typeof l === 'number'));
 
         // Route all breakpoint changes through ConnectionManager so there is exactly
@@ -341,10 +343,10 @@ export class CfmlDebugSession extends DebugSession {
         // Sync added breakpoints to ColdFusion RDS server
         for (const line of reqLines) {
             if (line !== undefined && !prevLines.has(line)) {
-                Logger.info(`[DAP] Adding breakpoint on ${path}:${line}`);
+                Logger.info(`[DAP] Adding breakpoint on ${serverPath}:${line}`);
                 if (cm?.isConnected) {
                     try {
-                        await cm.setBreakpoint(path, line, true);
+                        await cm.setBreakpoint(serverPath, line, true);
                     } catch (e) {
                         Logger.warn(`[DAP] Failed to set server breakpoint: ${e}`);
                     }
@@ -355,10 +357,10 @@ export class CfmlDebugSession extends DebugSession {
         // Sync removed breakpoints to ColdFusion RDS server
         for (const line of prevLines) {
             if (line !== undefined && !reqLines.has(line)) {
-                Logger.info(`[DAP] Removing breakpoint on ${path}:${line}`);
+                Logger.info(`[DAP] Removing breakpoint on ${serverPath}:${line}`);
                 if (cm?.isConnected) {
                     try {
-                        await cm.setBreakpoint(path, line, false);
+                        await cm.setBreakpoint(serverPath, line, false);
                     } catch (e) {
                         Logger.warn(`[DAP] Failed to remove server breakpoint: ${e}`);
                     }
@@ -367,10 +369,11 @@ export class CfmlDebugSession extends DebugSession {
         }
 
         const breakpoints: DebugProtocol.Breakpoint[] = (args.breakpoints ?? []).map(
-            bp => new Breakpoint(true, bp.line, undefined, new Source(args.source.name ?? path, path))
+            bp => new Breakpoint(true, bp.line, undefined, new Source(args.source.name ?? serverPath, rawPath))
         );
 
-        this._breakpoints.set(path, breakpoints);
+        this._breakpoints.set(rawPath, breakpoints);
+        this._breakpoints.set(serverPath, breakpoints);
 
         response.body = { breakpoints };
         this.sendResponse(response);
