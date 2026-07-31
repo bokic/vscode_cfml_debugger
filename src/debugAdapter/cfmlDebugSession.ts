@@ -455,12 +455,14 @@ export class CfmlDebugSession extends DebugSession {
     }
 
     private _nextVarRef = 100;
-    private _varHandles = new Map<number, any>();
+    private _varHandles = new Map<number, { val: any; depth: number }>();
 
     private _resetVarHandles(): void {
         this._varHandles.clear();
         this._nextVarRef = 100;
     }
+
+    private static readonly MAX_STRUCT_DEPTH = 10;
 
     protected async variablesRequest(
         response: DebugProtocol.VariablesResponse,
@@ -471,26 +473,34 @@ export class CfmlDebugSession extends DebugSession {
 
         // Dynamic handle expansion for nested structs/arrays (ref >= 100)
         if (args.variablesReference >= 100) {
-            const rawObj = this._varHandles.get(args.variablesReference);
+            const handle = this._varHandles.get(args.variablesReference);
+            const rawObj = handle?.val;
+            const currentDepth = handle?.depth ?? 0;
             const vars: Variable[] = [];
+
             if (rawObj && typeof rawObj === 'object') {
+                const allowChild = currentDepth < CfmlDebugSession.MAX_STRUCT_DEPTH;
                 if (Array.isArray(rawObj)) {
                     rawObj.forEach((val, idx) => {
-                        const childRef = (typeof val === 'object' && val !== null) ? (this._nextVarRef > 100_000 ? 0 : this._nextVarRef++) : 0;
+                        const isObj = typeof val === 'object' && val !== null;
+                        const childRef = (isObj && allowChild && this._nextVarRef <= 100_000) ? this._nextVarRef++ : 0;
                         if (childRef > 0) {
-                            this._varHandles.set(childRef, val);
+                            this._varHandles.set(childRef, { val, depth: currentDepth + 1 });
                         }
-                        const v = new Variable(`[${idx + 1}]`, formatCleanValue(val), childRef) as any;
+                        const displayVal = (isObj && !allowChild) ? '[Max Depth Reached]' : formatCleanValue(val);
+                        const v = new Variable(`[${idx + 1}]`, displayVal, childRef) as any;
                         v.type = getCfmlType(val);
                         vars.push(v);
                     });
                 } else {
                     Object.entries(rawObj).forEach(([k, val]) => {
-                        const childRef = (typeof val === 'object' && val !== null) ? (this._nextVarRef > 100_000 ? 0 : this._nextVarRef++) : 0;
+                        const isObj = typeof val === 'object' && val !== null;
+                        const childRef = (isObj && allowChild && this._nextVarRef <= 100_000) ? this._nextVarRef++ : 0;
                         if (childRef > 0) {
-                            this._varHandles.set(childRef, val);
+                            this._varHandles.set(childRef, { val, depth: currentDepth + 1 });
                         }
-                        const v = new Variable(k, formatCleanValue(val), childRef) as any;
+                        const displayVal = (isObj && !allowChild) ? '[Max Depth Reached]' : formatCleanValue(val);
+                        const v = new Variable(k, displayVal, childRef) as any;
                         v.type = getCfmlType(val);
                         vars.push(v);
                     });
@@ -536,9 +546,10 @@ export class CfmlDebugSession extends DebugSession {
                 const rawObj = res.rawValue;
                 if (Array.isArray(rawObj)) {
                     rawObj.forEach((val, idx) => {
-                        const childRef = (typeof val === 'object' && val !== null) ? this._nextVarRef++ : 0;
+                        const isObj = typeof val === 'object' && val !== null;
+                        const childRef = (isObj && this._nextVarRef <= 100_000) ? this._nextVarRef++ : 0;
                         if (childRef > 0) {
-                            this._varHandles.set(childRef, val);
+                            this._varHandles.set(childRef, { val, depth: 1 });
                         }
                         const v = new Variable(`[${idx + 1}]`, formatCleanValue(val), childRef) as any;
                         v.type = getCfmlType(val);
@@ -546,9 +557,10 @@ export class CfmlDebugSession extends DebugSession {
                     });
                 } else {
                     Object.entries(rawObj).forEach(([k, val]) => {
-                        const childRef = (typeof val === 'object' && val !== null) ? this._nextVarRef++ : 0;
+                        const isObj = typeof val === 'object' && val !== null;
+                        const childRef = (isObj && this._nextVarRef <= 100_000) ? this._nextVarRef++ : 0;
                         if (childRef > 0) {
-                            this._varHandles.set(childRef, val);
+                            this._varHandles.set(childRef, { val, depth: 1 });
                         }
                         const v = new Variable(k, formatCleanValue(val), childRef) as any;
                         v.type = getCfmlType(val);
