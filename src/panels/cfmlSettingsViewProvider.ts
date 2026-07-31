@@ -67,6 +67,7 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewId = 'cfmlDebuggerSettings';
 
     private _view?: vscode.WebviewView;
+    private _disposables: vscode.Disposable[] = [];
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -78,6 +79,11 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
         _context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken
     ): void {
+        // Dispose existing listeners if re-resolving view
+        while (this._disposables.length > 0) {
+            this._disposables.pop()?.dispose();
+        }
+
         this._view = webviewView;
 
         webviewView.webview.options = {
@@ -87,73 +93,82 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.html = this._buildHtml(webviewView.webview);
 
+        webviewView.onDidDispose(() => {
+            while (this._disposables.length > 0) {
+                this._disposables.pop()?.dispose();
+            }
+            this._view = undefined;
+        });
+
         // ── Extension → Webview: push initial state after load ────────────
-        webviewView.webview.onDidReceiveMessage(async (msg: { command: string; key?: string; value?: string | number; settings?: CfmlConnectionSettings }) => {
-            switch (msg.command) {
+        this._disposables.push(
+            webviewView.webview.onDidReceiveMessage(async (msg: { command: string; key?: string; value?: string | number; settings?: CfmlConnectionSettings }) => {
+                switch (msg.command) {
 
-                case 'ready':
-                    // Webview signalled it's ready — push current settings + state
-                    this._postSettings();
-                    this._postState();
-                    break;
+                    case 'ready':
+                        // Webview signalled it's ready — push current settings + state
+                        this._postSettings();
+                        this._postState();
+                        break;
 
-                case 'saveSetting':
-                    if (msg.key !== undefined && msg.value !== undefined) {
-                        await saveSetting(msg.key, msg.value);
-                    }
-                    break;
+                    case 'saveSetting':
+                        if (msg.key !== undefined && msg.value !== undefined) {
+                            await saveSetting(msg.key, msg.value);
+                        }
+                        break;
 
-                case 'connect': {
-                    let s = loadSettings();
-                    if (msg.settings) {
-                        // Persist and use the exact values from the DOM inputs
-                        s = msg.settings as CfmlConnectionSettings;
-                        await Promise.all([
-                            saveSetting('hostname', s.hostname),
-                            saveSetting('port',     s.port),
-                            saveSetting('username', s.username),
-                            saveSetting('password', s.password),
-                            saveSetting('path',     s.path),
-                            saveSetting('url',      s.url),
-                        ]);
+                    case 'connect': {
+                        let s = loadSettings();
+                        if (msg.settings) {
+                            // Persist and use the exact values from the DOM inputs
+                            s = msg.settings as CfmlConnectionSettings;
+                            await Promise.all([
+                                saveSetting('hostname', s.hostname),
+                                saveSetting('port',     s.port),
+                                saveSetting('username', s.username),
+                                saveSetting('password', s.password),
+                                saveSetting('path',     s.path),
+                                saveSetting('url',      s.url),
+                            ]);
+                        }
+                        try {
+                            await this._connectionManager.connect({
+                                host:     s.hostname,
+                                port:     s.port,
+                                username: s.username,
+                                password: s.password,
+                                path:     s.path,
+                            });
+                        } catch (e) {
+                            // State is already set to 'error' by the manager
+                            Logger.error(`[SettingsPanel] connect error: ${e}`);
+                            vscode.window.showErrorMessage(`ColdFusion Connection Failed: ${e}`, 'Show Debug Log').then(choice => {
+                                if (choice === 'Show Debug Log') {
+                                    Logger.show();
+                                }
+                            });
+                        }
+                        break;
                     }
-                    try {
-                        await this._connectionManager.connect({
-                            host:     s.hostname,
-                            port:     s.port,
-                            username: s.username,
-                            password: s.password,
-                            path:     s.path,
-                        });
-                    } catch (e) {
-                        // State is already set to 'error' by the manager
-                        Logger.error(`[SettingsPanel] connect error: ${e}`);
-                        vscode.window.showErrorMessage(`ColdFusion Connection Failed: ${e}`, 'Show Debug Log').then(choice => {
-                            if (choice === 'Show Debug Log') {
-                                Logger.show();
-                            }
-                        });
-                    }
-                    break;
+
+                    case 'disconnect':
+                        await this._connectionManager.disconnect();
+                        break;
                 }
+            }),
 
-                case 'disconnect':
-                    await this._connectionManager.disconnect();
-                    break;
-            }
-        });
+            // ── Push state changes to the webview ─────────────────────────────
+            this._connectionManager.onDidChangeState(() => {
+                this._postState();
+            }),
 
-        // ── Push state changes to the webview ─────────────────────────────
-        this._connectionManager.onDidChangeState(() => {
-            this._postState();
-        });
-
-        // ── Re-push settings when changed externally ──────────────────────
-        vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration(SETTINGS_KEY)) {
-                this._postSettings();
-            }
-        });
+            // ── Re-push settings when changed externally ──────────────────────
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration(SETTINGS_KEY)) {
+                    this._postSettings();
+                }
+            })
+        );
     }
 
     // ── Private ───────────────────────────────────────────────────────────
