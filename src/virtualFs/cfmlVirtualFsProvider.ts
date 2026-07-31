@@ -31,7 +31,7 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
     private readonly _store = new Map<string, VirtualEntry>();
 
     /** Cache of directory listings from the live server. */
-    private readonly _dirCache = new Map<string, { items: [string, vscode.FileType][]; ts: number }>();
+    private readonly _dirCache = new Map<string, { items: { name: string; type: vscode.FileType; size: number; mtime: number }[]; ts: number }>();
 
     private static readonly DIR_CACHE_TTL_MS = 10_000;
 
@@ -93,11 +93,15 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
             const parentPath = this._parentPath(serverPath);
             const name = serverPath.split('/').pop() ?? '';
             try {
-                const entries = await this._readDirFromServer(parentPath);
-                const match = entries.find(([n]) => n === name);
+                const entries = await this._getDirItemsFromServer(parentPath);
+                const match = entries.find(item => item.name === name);
                 if (match) {
-                    const now = Date.now();
-                    return { type: match[1], ctime: now, mtime: now, size: 0 };
+                    return {
+                        type: match.type,
+                        ctime: match.mtime,
+                        mtime: match.mtime,
+                        size: match.size,
+                    };
                 }
             } catch { /* fall through */ }
         }
@@ -124,10 +128,10 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
         if (this.connectionManager.isConnected) {
             try {
                 const serverPath = this._toServerPath(uri.path);
-                const serverEntries = await this._readDirFromServer(serverPath);
-                for (const se of serverEntries) {
-                    if (!results.some(([n]) => n === se[0])) {
-                        results.push(se);
+                const serverItems = await this._getDirItemsFromServer(serverPath);
+                for (const se of serverItems) {
+                    if (!results.some(([n]) => n === se.name)) {
+                        results.push([se.name, se.type]);
                     }
                 }
             } catch (e) {
@@ -146,9 +150,9 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
             const parentPath = this._parentPath(serverPath);
             const fileName = serverPath.split('/').pop() ?? '';
             try {
-                const dirItems = await this._readDirFromServer(parentPath);
+                const dirItems = await this._getDirItemsFromServer(parentPath);
                 // If item doesn't exist on server anymore, evict from store
-                if (!dirItems.some(([n]) => n === fileName)) {
+                if (!dirItems.some(item => item.name === fileName)) {
                     this._store.delete(uri.path);
                 }
             } catch { /* proceed */ }
@@ -358,9 +362,9 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
         return `${cleanRoot}${cleanVfs}`;
     }
 
-    private async _readDirFromServer(
+    private async _getDirItemsFromServer(
         path: string
-    ): Promise<[string, vscode.FileType][]> {
+    ): Promise<{ name: string; type: vscode.FileType; size: number; mtime: number }[]> {
         const serverPath = this._toServerPath(path);
 
         // Check cache
@@ -370,12 +374,18 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
         }
 
         const rawItems = await this.connectionManager.browseDir(serverPath);
-        const items: [string, vscode.FileType][] = rawItems.map(item => [
-            item.name,
-            item.kind === 'D' ? vscode.FileType.Directory : vscode.FileType.File,
-        ]);
+        const now = Date.now();
+        const items = rawItems.map(item => {
+          const rawDate = (item as any).mtime || (item as any).date || (item as any).lastModified;
+          return {
+            name: item.name,
+            type: item.kind === 'D' ? vscode.FileType.Directory : vscode.FileType.File,
+            size: typeof item.size === 'number' ? item.size : Number(item.size || 0),
+            mtime: rawDate ? new Date(rawDate).getTime() : now,
+          };
+        });
 
-        this._dirCache.set(serverPath, { items, ts: Date.now() });
+        this._dirCache.set(serverPath, { items, ts: now });
         return items;
     }
 
