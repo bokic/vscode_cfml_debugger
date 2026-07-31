@@ -428,9 +428,7 @@ export class CfmlDebugSession extends DebugSession {
         _args: DebugProtocol.ScopesArguments
     ): void {
         Logger.info('DAP scopesRequest');
-        // Clear cached variable handles from previous stop to prevent memory leaks
-        this._varHandles.clear();
-        this._nextVarRef = 100;
+        this._resetVarHandles();
 
         response.body = {
             scopes: [
@@ -459,6 +457,11 @@ export class CfmlDebugSession extends DebugSession {
     private _nextVarRef = 100;
     private _varHandles = new Map<number, any>();
 
+    private _resetVarHandles(): void {
+        this._varHandles.clear();
+        this._nextVarRef = 100;
+    }
+
     protected async variablesRequest(
         response: DebugProtocol.VariablesResponse,
         args: DebugProtocol.VariablesArguments
@@ -473,7 +476,7 @@ export class CfmlDebugSession extends DebugSession {
             if (rawObj && typeof rawObj === 'object') {
                 if (Array.isArray(rawObj)) {
                     rawObj.forEach((val, idx) => {
-                        const childRef = (typeof val === 'object' && val !== null) ? this._nextVarRef++ : 0;
+                        const childRef = (typeof val === 'object' && val !== null) ? (this._nextVarRef > 100_000 ? 0 : this._nextVarRef++) : 0;
                         if (childRef > 0) {
                             this._varHandles.set(childRef, val);
                         }
@@ -483,7 +486,7 @@ export class CfmlDebugSession extends DebugSession {
                     });
                 } else {
                     Object.entries(rawObj).forEach(([k, val]) => {
-                        const childRef = (typeof val === 'object' && val !== null) ? this._nextVarRef++ : 0;
+                        const childRef = (typeof val === 'object' && val !== null) ? (this._nextVarRef > 100_000 ? 0 : this._nextVarRef++) : 0;
                         if (childRef > 0) {
                             this._varHandles.set(childRef, val);
                         }
