@@ -275,6 +275,11 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
         newUri: vscode.Uri,
         options: { overwrite: boolean }
     ): Promise<void> {
+        const destExists = this._store.has(newUri.path);
+        if (destExists && !options.overwrite) {
+            throw vscode.FileSystemError.FileExists(newUri);
+        }
+
         if (this.connectionManager.isConnected) {
             const oldServerPath = this._toServerPath(oldUri.path);
             const newServerPath = this._toServerPath(newUri.path);
@@ -290,11 +295,21 @@ export class CfmlVirtualFsProvider implements vscode.FileSystemProvider {
             }
         }
 
-        const entry = this._store.get(oldUri.path);
-        if (entry) {
-            this._store.delete(oldUri.path);
-            this._store.set(newUri.path, entry);
+        const oldPrefix = oldUri.path.endsWith('/') ? oldUri.path : oldUri.path + '/';
+        const newPrefix = newUri.path.endsWith('/') ? newUri.path : newUri.path + '/';
+
+        // Update all matching in-memory store keys (including children of renamed directory)
+        for (const [p, entry] of Array.from(this._store.entries())) {
+            if (p === oldUri.path) {
+                this._store.delete(p);
+                this._store.set(newUri.path, entry);
+            } else if (p.startsWith(oldPrefix)) {
+                const childRel = p.slice(oldPrefix.length);
+                this._store.delete(p);
+                this._store.set(newPrefix + childRel, entry);
+            }
         }
+
         this._dirCache.clear();
         this._fireChange(oldUri, vscode.FileChangeType.Deleted);
         this._fireChange(newUri, vscode.FileChangeType.Created);
