@@ -344,6 +344,9 @@ export class ConnectionManager implements vscode.Disposable {
     Logger.info(
       `[ConnectionManager] Started debugger event polling loop for session ID=${sessionId}`,
     );
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5;
+
     while (this._isEventLoopActive && this._eventLoopSessionId === sessionId) {
       if (this._state.status !== "connected") {
         break;
@@ -363,6 +366,7 @@ export class ConnectionManager implements vscode.Disposable {
         ) {
           break;
         }
+        consecutiveErrors = 0; // Reset error counter on successful poll
         if (event) {
           if (event.type !== CFRDS_DEBUGGER_EVENT_TYPE.BREAKPOINT_SET) {
             if (
@@ -425,11 +429,28 @@ export class ConnectionManager implements vscode.Disposable {
         ) {
           break;
         }
+        consecutiveErrors++;
         const msg = err instanceof Error ? err.message : String(err);
         Logger.warn(
-          `[ConnectionManager] Error fetching debugger events: ${msg}`,
+          `[ConnectionManager] Error fetching debugger events (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}): ${msg}`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          Logger.error(
+            `[ConnectionManager] Persistent event loop failures (${consecutiveErrors}). Debug session expired or server connection lost. Transitioning to error state.`,
+          );
+          this.stopEventLoop();
+          this._setState({
+            status: "error",
+            message: `ColdFusion debug session expired or disconnected: ${msg}`,
+          });
+          vscode.window.showErrorMessage(
+            `ColdFusion debug session lost: ${msg}. Please reconnect via Connection Settings.`,
+          );
+          break;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
     Logger.info(
