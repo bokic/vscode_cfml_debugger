@@ -1,5 +1,6 @@
 // Redirect 'punycode' to userland 'punycode/' to prevent Node DEP0040 deprecation warning
 try {
+    /* eslint-disable @typescript-eslint/no-var-requires, prefer-rest-params */
     const Module = require('module');
     const originalRequire = Module.prototype.require;
     Module.prototype.require = function (id: string) {
@@ -8,6 +9,7 @@ try {
         }
         return originalRequire.apply(this, arguments as any);
     };
+    /* eslint-enable @typescript-eslint/no-var-requires, prefer-rest-params */
 } catch { /* ignore */ }
 
 import * as vscode from 'vscode';

@@ -1,3 +1,4 @@
+import * as http from "http";
 import { Server, ServerContext } from "@bokic/cfrds";
 import { sendRdsCommand } from "@bokic/cfrds/dist/transport";
 
@@ -40,7 +41,6 @@ export function destroyServerAgent(server: Server): void {
 export function resetServerAgent(server: Server): void {
   const internal = server as unknown as ServerWithCtx;
   if (internal.ctx) {
-    const http = require("http");
     internal.ctx.agent = new http.Agent({ keepAlive: false });
   }
 }

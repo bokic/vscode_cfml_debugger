@@ -192,7 +192,7 @@ export class CfmlSettingsViewProvider implements vscode.WebviewViewProvider {
         this._post({ command: 'connState', state: toSerialState(this._connectionManager.state) });
     }
 
-    private _buildHtml(webview: vscode.Webview): string {
+    private _buildHtml(_webview: vscode.Webview): string {
         const nonce = getNonce();
         return /* html */`<!DOCTYPE html>
 <html lang="en">
