@@ -27,7 +27,7 @@
   "activationEvents": [
     "onDebugResolve:cfml",
     "onDebugDynamicConfigurations:cfml",
-    "onFileSystem:cfml"
+    "onFileSystem:cfrds"
   ],
   "main": "./out/extension.js",
   "contributes": {

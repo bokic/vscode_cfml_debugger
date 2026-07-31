@@ -214,42 +214,42 @@ export function activate(context: vscode.ExtensionContext): void {
         })
     );
 
-    // Close any cfrds:// tabs on startup and when disconnected
-    closeCfrdsTabs();
+    // Close any tabs on startup and when disconnected
+    closeCfrdsTabs(vfsScheme);
 
-    // Sync existing breakpoints whenever connected, close cfrds tabs on disconnect
+    // Sync existing breakpoints whenever connected, close tabs on disconnect
     connectionManager.onDidChangeState(async (state) => {
         if (state.status === 'connected') {
             await connectionManager.clearAllBreakpoints();
             for (const bp of vscode.debug.breakpoints) {
                 if (bp instanceof vscode.SourceBreakpoint) {
-                    const serverPath = bp.location.uri.scheme === 'cfrds' ? bp.location.uri.path : bp.location.uri.fsPath;
+                    const serverPath = bp.location.uri.scheme === vfsScheme ? bp.location.uri.path : bp.location.uri.fsPath;
                     const line = bp.location.range.start.line + 1;
                     Logger.info(`[ConnectionManager] Syncing existing breakpoint to server: ${serverPath}:${line}`);
                     await connectionManager.setBreakpoint(serverPath, line, true);
                 }
             }
         } else if (state.status === 'disconnected') {
-            closeCfrdsTabs();
+            closeCfrdsTabs(vfsScheme);
         }
     });
 
     Logger.info('ColdFusion CFML Debugger extension activated.');
 }
 
-export function closeCfrdsTabs(): void {
+export function closeCfrdsTabs(scheme: string = 'cfrds'): void {
     try {
         const tabsToClose: vscode.Tab[] = [];
         for (const group of vscode.window.tabGroups.all) {
             for (const tab of group.tabs) {
                 let isCfrds = false;
                 if (tab.input instanceof vscode.TabInputText) {
-                    isCfrds = tab.input.uri?.scheme === 'cfrds';
+                    isCfrds = tab.input.uri?.scheme === scheme;
                 } else if (tab.input instanceof vscode.TabInputTextDiff) {
-                    isCfrds = tab.input.modified?.scheme === 'cfrds' || tab.input.original?.scheme === 'cfrds';
+                    isCfrds = tab.input.modified?.scheme === scheme || tab.input.original?.scheme === scheme;
                 } else if (tab.input && typeof tab.input === 'object') {
                     const inputObj = tab.input as any;
-                    if (inputObj.uri?.scheme === 'cfrds' || inputObj.modified?.scheme === 'cfrds' || inputObj.original?.scheme === 'cfrds') {
+                    if (inputObj.uri?.scheme === scheme || inputObj.modified?.scheme === scheme || inputObj.original?.scheme === scheme) {
                         isCfrds = true;
                     }
                 }
@@ -260,10 +260,10 @@ export function closeCfrdsTabs(): void {
         }
         if (tabsToClose.length > 0) {
             vscode.window.tabGroups.close(tabsToClose);
-            Logger.info(`[Extension] Closed ${tabsToClose.length} cfrds:// tabs.`);
+            Logger.info(`[Extension] Closed ${tabsToClose.length} ${scheme}:// tabs.`);
         }
     } catch (e) {
-        Logger.warn(`[Extension] Error closing cfrds tabs: ${e}`);
+        Logger.warn(`[Extension] Error closing ${scheme} tabs: ${e}`);
     }
 }
 
