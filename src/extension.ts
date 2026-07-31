@@ -122,7 +122,9 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         }),
         vscode.commands.registerCommand('cfmlDebugger.newFile', async (item?: any) => {
-            const parentUri: vscode.Uri = item?.resourceUri ?? vscode.Uri.parse(`cfrds:${connectionManager.rootPath || '/'}`);
+            const rootPath = connectionManager.rootPath || '/';
+            const defaultUri = vscode.Uri.from({ scheme: vfsScheme, path: rootPath.startsWith('/') ? rootPath : '/' + rootPath });
+            const parentUri: vscode.Uri = item?.resourceUri ?? defaultUri;
             const fileName = await vscode.window.showInputBox({
                 prompt: 'Enter name for new file (e.g. index.cfm)',
                 placeHolder: 'filename.cfm',
@@ -130,8 +132,9 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!fileName) { return; }
 
             const baseDir = item?.isDirectory ? parentUri.path : parentUri.path.substring(0, parentUri.path.lastIndexOf('/'));
-            const sep = baseDir.endsWith('/') ? '' : '/';
-            const newFileUri = vscode.Uri.parse(`cfrds:${baseDir}${sep}${fileName}`);
+            const cleanBase = baseDir.endsWith('/') ? baseDir.slice(0, -1) : baseDir;
+            const targetPath = `${cleanBase}/${fileName.replace(/^[\\/]+/, '')}`;
+            const newFileUri = parentUri.with({ path: targetPath });
 
             try {
                 await vscode.workspace.fs.writeFile(newFileUri, Buffer.from('', 'utf-8'));
@@ -143,7 +146,9 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         }),
         vscode.commands.registerCommand('cfmlDebugger.newFolder', async (item?: any) => {
-            const parentUri: vscode.Uri = item?.resourceUri ?? vscode.Uri.parse(`cfrds:${connectionManager.rootPath || '/'}`);
+            const rootPath = connectionManager.rootPath || '/';
+            const defaultUri = vscode.Uri.from({ scheme: vfsScheme, path: rootPath.startsWith('/') ? rootPath : '/' + rootPath });
+            const parentUri: vscode.Uri = item?.resourceUri ?? defaultUri;
             const folderName = await vscode.window.showInputBox({
                 prompt: 'Enter name for new folder',
                 placeHolder: 'new-folder',
@@ -151,8 +156,9 @@ export function activate(context: vscode.ExtensionContext): void {
             if (!folderName) { return; }
 
             const baseDir = item?.isDirectory ? parentUri.path : parentUri.path.substring(0, parentUri.path.lastIndexOf('/'));
-            const sep = baseDir.endsWith('/') ? '' : '/';
-            const newFolderUri = vscode.Uri.parse(`cfrds:${baseDir}${sep}${folderName}`);
+            const cleanBase = baseDir.endsWith('/') ? baseDir.slice(0, -1) : baseDir;
+            const targetPath = `${cleanBase}/${folderName.replace(/^[\\/]+/, '')}`;
+            const newFolderUri = parentUri.with({ path: targetPath });
 
             try {
                 await vscode.workspace.fs.createDirectory(newFolderUri);
