@@ -121,13 +121,18 @@ export class ConnectionManager implements vscode.Disposable {
     setServerTimeout(server, 0);
 
     try {
-      const info: IdeDefaultResult = {
-        num1: 0,
-        server_version: "ColdFusion Server",
-        client_version: "1.0.0",
-        num2: 0,
-        num3: 0,
-      };
+      let info: IdeDefaultResult;
+      try {
+        info = await server.ideDefault();
+      } catch {
+        info = {
+          num1: 0,
+          server_version: "ColdFusion Server",
+          client_version: "1.0.0",
+          num2: 0,
+          num3: 0,
+        };
+      }
 
       // Discover the CF root directory (verifies RDS connection)
       let rootPath = cfg.path && cfg.path !== "/" ? cfg.path : "/";

@@ -17,7 +17,7 @@ import { Server } from '@bokic/cfrds';
 import { CfmlVirtualFsProvider } from '../virtualFs/cfmlVirtualFsProvider';
 import { DebuggerEvent, CFRDS_DEBUGGER_EVENT_TYPE } from '@bokic/cfrds';
 import { Logger } from '../utils/logger';
-import { formatCfmlValue, formatCleanValue, getCfmlType } from '../utils/wddxParser';
+import { formatCleanValue, getCfmlType } from '../utils/wddxParser';
 import { normalizeVfsPath } from '../utils/pathUtils';
 
 /** Shape of the launch / attach configuration object. */
