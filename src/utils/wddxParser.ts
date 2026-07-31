@@ -224,3 +224,16 @@ export function parseWddxResponse(xml: string): ParsedWddxResult {
         rawValue: payload,
     };
 }
+
+/**
+ * Escape special XML characters in string values interpolated into WDDX packets.
+ */
+export function escapeXml(str: string): string {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+

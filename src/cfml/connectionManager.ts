@@ -8,7 +8,7 @@ import {
 } from "@bokic/cfrds";
 import { sendRdsCommand } from "@bokic/cfrds/dist/transport";
 import { parseNumber, parseString } from "@bokic/cfrds/dist/parser";
-import { parseWddxResponse, ParsedWddxResult } from "../utils/wddxParser";
+import { parseWddxResponse, ParsedWddxResult, escapeXml } from "../utils/wddxParser";
 import { Logger } from "../utils/logger";
 
 export interface ConnectionInfo {
@@ -474,7 +474,9 @@ export class ConnectionManager implements vscode.Disposable {
     }
     const server = this._state.server;
     const sessionName = this._state.dbgSessionId;
-    const wddx = `<wddxPacket version='1.0'><header/><data><array length='1'><struct type='java.util.HashMap'><var name='COMMAND'><string>GET_SINGLE_CF_VARIABLE</string></var><var name='VARIABLE_NAME'><string>${expression}</string></var><var name='THREAD'><string>${threadName || "main"}</string></var></struct></array></data></wddxPacket>`;
+    const escapedExpr = escapeXml(expression);
+    const escapedThread = escapeXml(threadName || "main");
+    const wddx = `<wddxPacket version='1.0'><header/><data><array length='1'><struct type='java.util.HashMap'><var name='COMMAND'><string>GET_SINGLE_CF_VARIABLE</string></var><var name='VARIABLE_NAME'><string>${escapedExpr}</string></var><var name='THREAD'><string>${escapedThread}</string></var></struct></array></data></wddxPacket>`;
 
     try {
       const raw = await sendRdsCommand((server as any).ctx, "DBGREQUEST", [
