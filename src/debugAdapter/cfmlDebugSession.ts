@@ -165,15 +165,31 @@ export class CfmlDebugSession extends DebugSession {
 
     private async _startDebugSession(): Promise<void> {
         const cm = this.virtualFsProvider?.connectionManager;
+        if (!cm) { return; }
 
-        if (!cm?.isConnected) {
+        // If ConnectionManager is not connected, use launch/attach config parameters to connect automatically
+        if (!cm.isConnected && this._config?.serverUrl) {
+            try {
+                const url = new URL(this._config.serverUrl);
+                const host = url.hostname || 'localhost';
+                const port = url.port ? parseInt(url.port, 10) : (url.protocol === 'https:' ? 443 : 8500);
+                const username = this._config.username || 'admin';
+                const password = this._config.password || '';
+                Logger.info(`[DAP] Auto-connecting ConnectionManager using launch configuration: ${host}:${port}`);
+                this.sendEvent(new OutputEvent(`Auto-connecting to ColdFusion server ${host}:${port}…\n`, 'console'));
+                await cm.connect({ host, port, username, password });
+            } catch (err) {
+                Logger.error(`[DAP] Failed to auto-connect using launch configuration: ${err}`);
+            }
+        }
+
+        if (!cm.isConnected) {
             Logger.warn('[DAP] Not connected to ColdFusion server. Please connect via Connection Settings first.');
             this.sendEvent(new OutputEvent('Not connected to ColdFusion server. Use Connection Settings to connect first.\n', 'stderr'));
             return;
         }
 
         // Reuse the single RDS debugger session already started by ConnectionManager.
-        // Do NOT call server.debuggerStart() again — that would create a second session.
         const sessionId = cm.dbgSessionId;
         if (!sessionId) {
             Logger.warn('[DAP] ConnectionManager has no active RDS debugger session.');
