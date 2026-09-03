@@ -6,6 +6,18 @@ tsconfig.json
 .eslintrc.json
 .gitignore
 CLAUDE.md
+GEMINI.md
 *.vsix
 *.sh
+
+# TypeScript declarations and source maps (not needed at runtime)
+**/*.d.ts
+**/*.d.ts.map
+**/*.js.map
+
+# Dev-only node_modules artifacts
 node_modules/@types/**
+node_modules/**/README.md
+node_modules/**/LICENSE*
+node_modules/**/CHANGELOG*
+node_modules/@vscode/debugadapter/lib/tests/**
