@@ -1,17 +1,17 @@
-# ColdFusion / CFML Debugger for VS Code
+# Adobe ColdFusion / CFML Debugger for VS Code
 
-A Visual Studio Code extension for debugging ColdFusion applications.
+A Visual Studio Code extension for debugging CFML applications under Adobe ColdFusion.
 
 ## What It Does
 
-This extension lets you debug ColdFusion / CFML code directly from VS Code by connecting to your ColdFusion server over RDS (Remote Development Services).
+This extension lets you debug CFML code directly from VS Code by connecting to your Adobe ColdFusion server over RDS (Remote Development Services).
 
 **Key features:**
 
-- **Debug your code** - Set breakpoints, step through lines, inspect variables, and examine ColdFusion scopes (variables, session, application, etc.)
+- **Debug your code** - Set breakpoints, step through lines, inspect variables, and examine CFML scopes (variables, session, application, etc.)
 - **Browse remote files** - Open and edit files on your ColdFusion server without copying them locally
 - **Manage files remotely** - Create, rename, and delete files and folders on the server from the sidebar
-- **Variable inspection** - Inspect complex ColdFusion structures, queries, arrays, and objects
+- **Variable inspection** - Inspect complex CFML structures, queries, arrays, and objects
 
 ## Requirements
 
