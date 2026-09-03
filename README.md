@@ -98,51 +98,6 @@ To prevent leaving threads paused or orphan debug sessions open on the ColdFusio
 
 ---
 
-## 🚀 Installation & Getting Started
-
-> [!TIP]
-> Prebuilt `.vsix` package releases are available for direct download at [GitHub Releases](https://github.com/bokic/vscode_cfml_debugger/releases).
-
-### 1. Build from Source
-```bash
-# Clone the repository
-git clone https://github.com/bokic/vscode_cfml_debugger.git
-cd vscode_cfml_debugger
-
-# Install dependencies
-npm install
-
-# Build extension
-npm run compile
-```
-
-### 2. Run in Development Mode
-Press **F5** in VS Code to open an **Extension Development Host** window with the ColdFusion Debugger loaded.
-
-### 3. Package as VSIX
-To generate an installable `.vsix` extension package:
-```bash
-./build-vsix.sh
-# or using npm:
-npm run package
-```
-
-### 4. Installing the VSIX Package
-
-#### Option 1: Via VS Code Graphical Interface
-1. Open **VS Code**.
-2. Open the **Extensions** panel (`Ctrl+Shift+X` / `Cmd+Shift+X`).
-3. Click the **`...`** (More Actions) menu at the top-right of the Extensions panel.
-4. Click **Install from VSIX...**
-5. Select the generated `.vsix` file (e.g. `vscode-cfml-debugger-0.1.0.vsix`).
-
-#### Option 2: Via Terminal Command Line
-```bash
-code --install-extension vscode-cfml-debugger-0.1.0.vsix
-```
-
----
-
 ## 📖 Usage Guide
 
 ### 1. Connection Settings Panel
