@@ -5,8 +5,7 @@ tsconfig.json
 .eslintrc.js
 .eslintrc.json
 .gitignore
-CLAUDE.md
-GEMINI.md
+AGENTS.md
 *.vsix
 *.sh
 
